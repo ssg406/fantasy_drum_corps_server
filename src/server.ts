@@ -1,11 +1,6 @@
 import { Server } from 'socket.io';
-// import cors from 'cors';
-// import express from 'express';
 import http from 'http';
 
-// Initialize Express server/Http server/Socket.io server
-// const app = express();
-// app.use(cors());
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
@@ -15,6 +10,6 @@ const io = new Server(server, {
 });
 
 // Start server
-io.listen(3000);
+io.listen(process.env.PORT);
 
 export default io;

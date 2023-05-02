@@ -1,6 +1,8 @@
 import { Server } from 'socket.io';
 import http from 'http';
 
+const PORT = parseInt(<string>process.env.PORT) || 3000;
+
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
@@ -10,6 +12,6 @@ const io = new Server(server, {
 });
 
 // Start server
-io.listen(process.env.PORT);
+io.listen(PORT);
 
 export default io;

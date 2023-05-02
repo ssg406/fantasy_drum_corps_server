@@ -2,6 +2,7 @@ import { playerRepository, toursRepository } from './data';
 import { DraftPlayer } from './models/DraftPlayer';
 import { Player } from './models/Player';
 import io from './server';
+import * as dotenv from 'dotenv';
 import { SocketEvents } from './socketEvents';
 import { allPicks } from './allPicks';
 
@@ -15,6 +16,9 @@ interface ClientPick {
 }
 
 const DRAFT_COUNTDOWN_TIME = 10000;
+
+dotenv.config();
+console.log(process.env);
 
 io.on('connection', function (socket) {
   console.log('socket connected to default namespace');

@@ -4,6 +4,8 @@ import { Player } from './models/Player';
 import io from './server';
 import { SocketEvents } from './socketEvents';
 import { allPicks } from './allPicks';
+import { Socket } from 'socket.io';
+import DrumCorpsCaption from 'models/DrumCorpsCaption';
 
 interface ClientIdentification {
   playerId: string;
@@ -11,14 +13,11 @@ interface ClientIdentification {
 
 interface ClientPick {
   playerId: string;
-  drumCorpsCaptionId: string;
+  drumCorpsCaption: DrumCorpsCaption;
 }
 
-const DRAFT_COUNTDOWN_TIME = 10000;
-
-io.on('connection', function (socket) {
-  console.log('socket connected to default namespace');
-});
+const DRAFT_COUNTDOWN_TIME = 100;
+const TURN_TIME_SECONDS = 45;
 
 async function createNamespaces() {
   const allTours = await toursRepository.find();
@@ -96,18 +95,18 @@ async function createNamespaces() {
                 let timerInterval: NodeJS.Timer;
                 let turn = 0;
                 let currentTurn = 0;
-                let remainingTime = 45;
+                let remainingTime = TURN_TIME_SECONDS;
 
                 function nextTurn() {
                   console.log('next turn triggered ', turn);
                   turn = currentTurn++ % draftPlayers.length;
                   const turnAfter = (currentTurn + 2) % draftPlayers.length;
-                  console.log('turn after is ', turnAfter);
                   tourNamespace.emit(SocketEvents.SERVER_STARTS_TURN, {
                     availablePicks,
                     currentPick: draftPlayers[turn].player.id,
                     currentPickName: draftPlayers[turn].player.displayName,
                     nextPickName: draftPlayers[turnAfter].player.displayName,
+                    roundNumber: currentTurn,
                   });
                   triggerTimeout();
                 }
@@ -118,12 +117,21 @@ async function createNamespaces() {
                     tourNamespace.emit(SocketEvents.SERVER_UPDATE_TURN_TIMER, {
                       remainingTime,
                     });
+                    console.log('Remaining time: ', remainingTime);
                     remainingTime = remainingTime === 0 ? 0 : remainingTime - 1;
                   }, 1000);
                   timeout = setTimeout(() => {
-                    resetInterval();
-                    nextTurn();
-                  }, 45 * 1000);
+                    console.log('No pick received');
+                    // If turn times out emit a notice to the socket and the client will auto select
+                    draftPlayers[turn].socket.emit(
+                      SocketEvents.SERVER_NO_PICK_RECEIVED
+                    );
+                    // Wait for momentarily for auto pick from client
+                    setTimeout(() => {
+                      resetInterval();
+                      nextTurn();
+                    }, 1000);
+                  }, TURN_TIME_SECONDS * 1000 + 2000);
                 }
 
                 // Clear the turn timer
@@ -146,15 +154,36 @@ async function createNamespaces() {
                 nextTurn();
 
                 socket.on(
+                  SocketEvents.CLIENT_SENDS_AUTO_PICK,
+                  function (data: ClientPick) {
+                    console.log('Server received auto pick from client');
+                    availablePicks = availablePicks.filter(
+                      (pick) =>
+                        pick.drumCorpsCaptionId !==
+                        data.drumCorpsCaption.drumCorpsCaptionId
+                    );
+                    tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+                      lastPick: data.drumCorpsCaption,
+                    });
+                  }
+                );
+
+                socket.on(
                   SocketEvents.CLIENT_ENDS_TURN,
                   function (data: ClientPick) {
                     availablePicks = availablePicks.filter(
-                      (pick) => pick.id !== data.drumCorpsCaptionId
+                      (pick) =>
+                        pick.drumCorpsCaptionId !==
+                        data.drumCorpsCaption.drumCorpsCaptionId
                     );
                     console.log(
-                      'Client picked drum corps caption id ',
-                      data.drumCorpsCaptionId
+                      'Client picked drum corps caption  ',
+                      data.drumCorpsCaption.caption,
+                      data.drumCorpsCaption.corps
                     );
+                    tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+                      lastPick: data.drumCorpsCaption,
+                    });
                     resetTimeOut();
                     resetInterval();
                     nextTurn();
@@ -169,25 +198,28 @@ async function createNamespaces() {
                   draftStarted = false;
                   resetInterval();
                   resetTimeOut();
-                  tourNamespace.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
-                    draftCountingDown,
-                    draftStarted,
-                  });
+                  updateJoinedPlayers();
+                  tourNamespace.emit(
+                    SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER
+                  );
                   tourNamespace.sockets.forEach((socket) =>
                     socket.disconnect()
                   );
                 });
 
                 socket.on('disconnect', () => {
-                  console.log(
-                    'Additional listener for disconnect. decrementing turn variable'
-                  );
                   turn--;
                   if (draftPlayers.length === 0) {
                     clearTimeout(timeout);
+                    clearInterval(timerInterval);
+                    draftStarted = false;
                   }
                 });
               }, DRAFT_COUNTDOWN_TIME);
+
+              socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
+                disconnectPlayer(socket);
+              });
             });
 
             // Client emits this event to cancel the countdown before draft begins
@@ -206,17 +238,29 @@ async function createNamespaces() {
       );
 
       socket.on('disconnect', function () {
-        console.log('Outer disconnect listener');
-        const foundIndex = draftPlayers.findIndex(
-          (draftPlayer) => draftPlayer.socket.id === socket.id
-        );
-        if (foundIndex !== -1) {
-          console.log('a player disconnected and is being removed from list');
-          draftPlayers.splice(foundIndex, 1);
-          updateJoinedPlayers();
-        }
+        disconnectPlayer(socket);
+        // const foundIndex = draftPlayers.findIndex(
+        //   (draftPlayer) => draftPlayer.socket.id === socket.id
+        // );
+        // if (foundIndex !== -1) {
+        //   console.log('a player disconnected and is being removed from list');
+        //   draftPlayers.splice(foundIndex, 1);
+        //   updateJoinedPlayers();
+        // }
       });
     });
+
+    function disconnectPlayer(socket: Socket): void {
+      const foundIndex = draftPlayers.findIndex(
+        (draftPlayer) => draftPlayer.socket.id === socket.id
+      );
+      if (foundIndex !== -1) {
+        console.log('a player disconnected and is being removed from list');
+        draftPlayers.splice(foundIndex, 1);
+        updateJoinedPlayers();
+      }
+      socket.disconnect();
+    }
 
     function updateJoinedPlayers() {
       const joinedPlayers = draftPlayers.map(
@@ -225,7 +269,7 @@ async function createNamespaces() {
       tourNamespace.emit(SocketEvents.SERVER_UPDATE_JOINED_PLAYERS, {
         joinedPlayers,
       });
-      console.log('Sent clients updated players list ', joinedPlayers);
+      console.log('Joined players updated.');
     }
   });
 }
@@ -236,6 +280,3 @@ async function getPlayer(playerId: string): Promise<Player> {
 }
 
 createNamespaces();
-function startDraft(): void {
-  console.log('The draft has started');
-}

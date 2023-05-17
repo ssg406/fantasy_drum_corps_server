@@ -1,5 +1,8 @@
 import { Server } from 'socket.io';
 import http from 'http';
+// For local development
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 const PORT = parseInt(<string>process.env.PORT) || 3000;
 

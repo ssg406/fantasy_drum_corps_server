@@ -1,4 +1,8 @@
-import { playerRepository, toursRepository } from './data';
+import {
+  playerRepository,
+  remainingPicksRepository,
+  toursRepository,
+} from './data';
 import { DraftPlayer } from './models/DraftPlayer';
 import { Player } from './models/Player';
 import io from './server';
@@ -7,6 +11,7 @@ import { allPicks } from './allPicks';
 import { Socket } from 'socket.io';
 import DrumCorpsCaption from './models/DrumCorpsCaption';
 import Tour from './models/Tour';
+import { RemainingPicks } from 'models/RemainingPicks';
 
 interface ClientIdentification {
   playerId: string;
@@ -236,8 +241,10 @@ async function createNamespaces() {
                       caption: pick.caption.toString(),
                     });
                   });
-                  tour.leftOverPicks = leftOverPicks;
-                  saveTour(tour);
+                  const remainingPicks = new RemainingPicks();
+                  remainingPicks.tourId = tour.id;
+                  remainingPicks.leftOverPicks = leftOverPicks;
+                  saveRemainingPicks(remainingPicks);
                 }
               });
             });
@@ -291,8 +298,10 @@ async function getPlayer(playerId: string): Promise<Player> {
   return player;
 }
 
-async function saveTour(tour: Tour): Promise<void> {
-  await toursRepository.update(tour);
+async function saveRemainingPicks(
+  remainingPicks: RemainingPicks
+): Promise<void> {
+  await remainingPicksRepository.create(remainingPicks);
 }
 
 createNamespaces();

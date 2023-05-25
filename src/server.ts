@@ -11,7 +11,7 @@ const PORT = parseInt(<string>process.env.PORT) || 3000;
 const server = http.createServer();
 const io = new Server(server, {
   cors: {
-    origin: 'https://www.fantasydrumcorps.com',
+    origin: ['https://www.fantasydrumcorps.com', 'http://localhost:10000'],
     methods: ['GET', 'POST'],
   },
 });

@@ -11,7 +11,7 @@ import { allPicks } from './allPicks';
 import { Socket } from 'socket.io';
 import DrumCorpsCaption from './models/DrumCorpsCaption';
 import Tour from './models/Tour';
-import { RemainingPicks } from 'models/RemainingPicks';
+import { RemainingPicks } from './models/RemainingPicks';
 
 interface ClientIdentification {
   playerId: string;

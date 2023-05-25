@@ -9,12 +9,7 @@ import cors from 'cors';
 const PORT = parseInt(<string>process.env.PORT) || 3000;
 
 const server = http.createServer();
-const io = new Server(server, {
-  cors: {
-    origin: 'http://localhost:10000',
-    methods: ['GET', 'POST'],
-  },
-});
+const io = new Server(server);
 
 // Start server
 server.listen(PORT);

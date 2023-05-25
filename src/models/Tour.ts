@@ -1,4 +1,5 @@
 import { Collection } from 'fireorm';
+import DrumCorpsCaption from './DrumCorpsCaption';
 
 @Collection('tours')
 export default class Tour {
@@ -11,4 +12,5 @@ export default class Tour {
   draftDateTime!: string;
   password?: string;
   draftActive!: boolean;
+  leftOverPicks!: DrumCorpsCaption[];
 }

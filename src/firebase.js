@@ -1,8 +1,8 @@
 import admin from 'firebase-admin';
 import { initializeApp } from 'firebase-admin/app';
 // For local devlopment
-import * as dotenv from 'dotenv';
-dotenv.config();
+// import * as dotenv from 'dotenv';
+// dotenv.config();
 
 // Initialize Firebase admin
 initializeApp({

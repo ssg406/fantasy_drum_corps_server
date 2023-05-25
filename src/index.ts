@@ -5,7 +5,8 @@ import io from './server';
 import { SocketEvents } from './socketEvents';
 import { allPicks } from './allPicks';
 import { Socket } from 'socket.io';
-import DrumCorpsCaption from 'models/DrumCorpsCaption';
+import DrumCorpsCaption from './models/DrumCorpsCaption';
+import Tour from './models/Tour';
 
 interface ClientIdentification {
   playerId: string;
@@ -82,6 +83,7 @@ async function createNamespaces() {
               // Set countdown flag to true and emit countdown start event to namespace
               draftCountingDown = true;
               tourNamespace.emit(SocketEvents.SERVER_BEGIN_DRAFT_COUNTDOWN);
+              let availablePicks = allPicks;
 
               // Start the draft after countdown
               draftCountdown = setTimeout(() => {
@@ -89,7 +91,6 @@ async function createNamespaces() {
                 draftStarted = true;
                 tourNamespace.emit(SocketEvents.SERVER_DRAFT_TURNS_BEGIN);
                 draftCountingDown = false;
-                let availablePicks = allPicks;
 
                 let timeout: NodeJS.Timeout;
                 let timerInterval: NodeJS.Timer;
@@ -219,6 +220,12 @@ async function createNamespaces() {
 
               socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
                 disconnectPlayer(socket);
+                // Check if this is the last player to complete a lineup
+                if (draftPlayers.length == 0) {
+                  // Write the left over picks to the server
+                  tour.leftOverPicks = availablePicks;
+                  saveTour(tour);
+                }
               });
             });
 
@@ -239,14 +246,6 @@ async function createNamespaces() {
 
       socket.on('disconnect', function () {
         disconnectPlayer(socket);
-        // const foundIndex = draftPlayers.findIndex(
-        //   (draftPlayer) => draftPlayer.socket.id === socket.id
-        // );
-        // if (foundIndex !== -1) {
-        //   console.log('a player disconnected and is being removed from list');
-        //   draftPlayers.splice(foundIndex, 1);
-        //   updateJoinedPlayers();
-        // }
       });
     });
 
@@ -277,6 +276,10 @@ async function createNamespaces() {
 async function getPlayer(playerId: string): Promise<Player> {
   const player = await playerRepository.findById(playerId);
   return player;
+}
+
+async function saveTour(tour: Tour): Promise<void> {
+  await toursRepository.update(tour);
 }
 
 createNamespaces();

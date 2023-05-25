@@ -18,7 +18,12 @@ app.get('/test', function (req: Request, res: Response, next: NextFunction) {
 });
 
 const server = http.createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
+});
 
 // Start server
 server.listen(PORT);

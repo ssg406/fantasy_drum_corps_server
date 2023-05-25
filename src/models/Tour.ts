@@ -12,5 +12,5 @@ export default class Tour {
   draftDateTime!: string;
   password?: string;
   draftActive!: boolean;
-  leftOverPicks!: DrumCorpsCaption[];
+  leftOverPicks!: { corps: string; caption: string }[];
 }

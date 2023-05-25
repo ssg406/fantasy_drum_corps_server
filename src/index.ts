@@ -17,6 +17,11 @@ interface ClientPick {
   drumCorpsCaption: DrumCorpsCaption;
 }
 
+interface DrumCorpsCaptionObject {
+  corps: string;
+  caption: string;
+}
+
 const DRAFT_COUNTDOWN_TIME = 100;
 const TURN_TIME_SECONDS = 45;
 
@@ -223,7 +228,15 @@ async function createNamespaces() {
                 // Check if this is the last player to complete a lineup
                 if (draftPlayers.length == 0) {
                   // Write the left over picks to the server
-                  tour.leftOverPicks = availablePicks;
+
+                  let leftOverPicks: DrumCorpsCaptionObject[] = [];
+                  availablePicks.forEach((pick) => {
+                    leftOverPicks.push({
+                      corps: pick.corps.toString(),
+                      caption: pick.caption.toString(),
+                    });
+                  });
+                  tour.leftOverPicks = leftOverPicks;
                   saveTour(tour);
                 }
               });

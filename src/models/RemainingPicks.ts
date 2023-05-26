@@ -1,6 +1,7 @@
 import { Collection } from 'fireorm';
 
 interface DrumCorpsCaptionObject {
+  id: string;
   corps: string;
   caption: string;
 }

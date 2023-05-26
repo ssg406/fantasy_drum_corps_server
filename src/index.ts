@@ -23,6 +23,7 @@ interface ClientPick {
 }
 
 interface DrumCorpsCaptionObject {
+  id: string;
   corps: string;
   caption: string;
 }
@@ -237,6 +238,7 @@ async function createNamespaces() {
                   let leftOverPicks: DrumCorpsCaptionObject[] = [];
                   availablePicks.forEach((pick) => {
                     leftOverPicks.push({
+                      id: pick.drumCorpsCaptionId,
                       corps: pick.corps.toString(),
                       caption: pick.caption.toString(),
                     });
@@ -245,6 +247,7 @@ async function createNamespaces() {
                   remainingPicks.tourId = tour.id;
                   remainingPicks.leftOverPicks = leftOverPicks;
                   saveRemainingPicks(remainingPicks);
+                  markTourComplete(tour);
                 }
               });
             });
@@ -302,6 +305,11 @@ async function saveRemainingPicks(
   remainingPicks: RemainingPicks
 ): Promise<void> {
   await remainingPicksRepository.create(remainingPicks);
+}
+
+async function markTourComplete(tour: Tour): Promise<void> {
+  tour.draftComplete = true;
+  await toursRepository.update(tour);
 }
 
 createNamespaces();

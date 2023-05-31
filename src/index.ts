@@ -31,6 +31,10 @@ interface DrumCorpsCaptionObject {
 const DRAFT_COUNTDOWN_TIME = 100;
 const TURN_TIME_SECONDS = 45;
 
+io.on('connection', (socket) => {
+  console.log('A socket was connected to io');
+});
+
 async function createNamespaces() {
   const allTours = await toursRepository.find();
 

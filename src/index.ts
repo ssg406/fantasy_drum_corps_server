@@ -1,5 +1,5 @@
-import { toursRepository } from "data";
-import Tour from "models/Tour";
+import { toursRepository } from "./data";
+import Tour from "./models/Tour";
 
 async function getTour(tourId: string): Promise<Tour> {
     const tour = await toursRepository.findById(tourId);

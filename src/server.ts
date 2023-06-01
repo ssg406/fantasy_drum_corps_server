@@ -2,7 +2,9 @@ import { Server } from 'socket.io';
 import http from 'http';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
+import bodyParser from 'body-parser';
 import { createNamespace } from './index';
+import { createTourNamespace } from './createNamespace';
 // For local development
 // import * as dotenv from 'dotenv';
 
@@ -14,13 +16,11 @@ const app = express();
 
 app.use(cors());
 
-app.get('/test', function (req: Request, res: Response, next: NextFunction) {
-  res.status(200).send({ msg: 'This is a positive response' });
-});
+app.use(bodyParser.json());
 
 app.post('/addTour', function(req: Request, res: Response, next: NextFunction) {
   const {tourId} = req.body;
-  createNamespace(tourId);
+  createTourNamespace(tourId);
   res.status(201);
 })
 

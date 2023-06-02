@@ -228,29 +228,32 @@ export async function createTourNamespace(tourId: string) {
                             draftStarted = false;
                         }
                     });
+
+                    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
+                        console.info(`Lineup complete for player ${player.displayName}. Disconnecting.`);
+                        disconnectPlayer();
+                        // Check if this is the last player to complete a lineup
+                        if (draftPlayers.length == 0) {
+                            // Write the left over picks to the server
+    
+                            let leftOverPicks: DrumCorpsCaptionObject[] = [];
+                            availablePicks.forEach((pick) => {
+                                leftOverPicks.push({
+                                    id: pick.drumCorpsCaptionId,
+                                    corps: pick.corps.toString(),
+                                    caption: pick.caption.toString(),
+                                });
+                            });
+                            const remainingPicks = new RemainingPicks();
+                            remainingPicks.tourId = tour.id;
+                            remainingPicks.leftOverPicks = leftOverPicks;
+                            saveRemainingPicks(remainingPicks);
+                            markTourComplete(tour);
+                        }
+                    }); // End client lineup complete listener
                 }, DRAFT_COUNTDOWN_TIME);
 
-                socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
-                    disconnectPlayer();
-                    // Check if this is the last player to complete a lineup
-                    if (draftPlayers.length == 0) {
-                        // Write the left over picks to the server
 
-                        let leftOverPicks: DrumCorpsCaptionObject[] = [];
-                        availablePicks.forEach((pick) => {
-                            leftOverPicks.push({
-                                id: pick.drumCorpsCaptionId,
-                                corps: pick.corps.toString(),
-                                caption: pick.caption.toString(),
-                            });
-                        });
-                        const remainingPicks = new RemainingPicks();
-                        remainingPicks.tourId = tour.id;
-                        remainingPicks.leftOverPicks = leftOverPicks;
-                        saveRemainingPicks(remainingPicks);
-                        markTourComplete(tour);
-                    }
-                });
             });// End draft start listener
 
             //* Client emits this event to cancel the countdown before draft begins

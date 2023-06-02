@@ -80,7 +80,7 @@ export async function createTourNamespace(tourId: string) {
 
             //* Add player to list of joined players
             draftPlayers.push(new DraftPlayer(player, socket));
-            //updateJoinedPlayers();
+            updateJoinedPlayers();
 
             //* Send current draft state
             socket.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
@@ -264,6 +264,14 @@ export async function createTourNamespace(tourId: string) {
                     );
                 }
             }); // End client cancel draft listener
+
+            //* Listen for socket disconnect and remove from draftPlayers
+            socket.on('disconnect', () => {
+                disconnectPlayer();
+                if (draftPlayers.length == 0) {
+                    draftStarted = false;
+                }
+            })
 
 
         }); // End client sends identification

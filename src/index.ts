@@ -20,7 +20,7 @@ app.use(bodyParser.json());
 app.post('/addTour', function(req: Request, res: Response, next: NextFunction) {
   const {tourId} = req.body;
   createTourNamespace(tourId);
-  res.status(201);
+  res.status(201).send();
 })
 
 const server = http.createServer(app);

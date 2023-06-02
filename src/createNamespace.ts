@@ -66,7 +66,7 @@ export async function createTourNamespace(tourId: string) {
             // Send notification if draft is already in progress
             if (draftStarted) {
                 socket.emit(SocketEvents.SERVER_DRAFT_ALREADY_STARTED);
-                // TODO: Disconnect socket??
+                socket.disconnect();
                 return;
             }
 
@@ -74,6 +74,8 @@ export async function createTourNamespace(tourId: string) {
             const existingPlayer = draftPlayers.find((draftPlayer) => draftPlayer.player.id === player.id);
             if (existingPlayer) {
                 console.warn('A duplicate player connected. Not adding to list');
+                socket.disconnect();
+                return;
             }
 
             //* Add player to list of joined players

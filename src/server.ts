@@ -3,7 +3,6 @@ import http from 'http';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import { createNamespace } from './index';
 import { createTourNamespace } from './createNamespace';
 // For local development
 // import * as dotenv from 'dotenv';

@@ -5,7 +5,7 @@ import { DraftPlayer } from "./models/DraftPlayer";
 import DrumCorpsCaption from "./models/DrumCorpsCaption";
 import { Player } from "./models/Player";
 import { RemainingPicks } from "./models/RemainingPicks";
-import io from './server';
+import io from './index';
 import { SocketEvents } from "./socketEvents";
 import Tour from "./models/Tour";
 

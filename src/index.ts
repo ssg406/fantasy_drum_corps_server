@@ -1,47 +1,46 @@
-import { Server } from 'socket.io';
-import http from 'http';
-import cors from 'cors';
-import express, { NextFunction, Request, Response } from 'express';
-import bodyParser from 'body-parser';
-import { createTourNamespace } from './createNamespace';
-import { toursRepository } from 'data';
-// For local development
-// import * as dotenv from 'dotenv';
+import { Socket } from 'socket.io';
+import { allPicks } from './allPicks';
+import {
+  playerRepository,
+  remainingPicksRepository,
+  toursRepository,
+} from './data';
+import { DraftPlayer } from './models/DraftPlayer';
+import DrumCorpsCaption from './models/DrumCorpsCaption';
+import { Player } from './models/Player';
+import { RemainingPicks } from './models/RemainingPicks';
+import io from './server';
+import { SocketEvents } from './socketEvents';
+import Tour from './models/Tour';
 
-// dotenv.config();
+interface ClientIdentification {
+  playerId: string;
+}
 
-const PORT = parseInt(<string>process.env.PORT) || 3000;
+interface ClientPick {
+  playerId: string;
+  drumCorpsCaption: DrumCorpsCaption;
+}
 
-const app = express();
+interface DrumCorpsCaptionObject {
+  id: string;
+  corps: string;
+  caption: string;
+}
 
-app.use(cors());
+//* Constants
+const DRAFT_COUNTDOWN_TIME = 100;
+const TURN_TIME_SECONDS = 45;
 
-app.use(bodyParser.json());
+// Create draft variables that apply to namespace
+let draftPlayers: DraftPlayer[] = [];
+let draftCountingDown = false;
+let draftStarted = false;
+let draftCountdown: NodeJS.Timeout;
 
-app.post(
-  '/addTour',
-  function (req: Request, res: Response, next: NextFunction) {
-    const { tourId } = req.body;
-    createTourNamespace(tourId);
-    res.status(201);
-  }
-);
+const tours = io.of(/^[a-zA-Z0-9]*$/);
 
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST'],
-  },
+tours.on('connection', function (socket: Socket) {
+  const tourNamespace = socket.nsp;
+  console.log(tourNamespace);
 });
-
-// Refresh namespaces when started
-io.on('connection', async function () {
-  const tours = await toursRepository.find();
-  tours.forEach((tour) => createTourNamespace(tour.id));
-});
-
-// Start server
-server.listen(PORT);
-
-export default io;

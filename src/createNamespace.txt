@@ -1,17 +1,13 @@
-import { Socket } from 'socket.io';
-import { allPicks } from './allPicks';
-import {
-  playerRepository,
-  remainingPicksRepository,
-  toursRepository,
-} from './data';
-import { DraftPlayer } from './models/DraftPlayer';
-import DrumCorpsCaption from './models/DrumCorpsCaption';
-import { Player } from './models/Player';
-import { RemainingPicks } from './models/RemainingPicks';
+import { Socket } from "socket.io";
+import { allPicks } from "./allPicks";
+import { playerRepository, remainingPicksRepository, toursRepository } from "./data";
+import { DraftPlayer } from "./models/DraftPlayer";
+import DrumCorpsCaption from "./models/DrumCorpsCaption";
+import { Player } from "./models/Player";
+import { RemainingPicks } from "./models/RemainingPicks";
 import io from '.';
-import { SocketEvents } from './socketEvents';
-import Tour from './models/Tour';
+import { SocketEvents } from "./socketEvents";
+import Tour from "./models/Tour";
 
 interface ClientIdentification {
   playerId: string;
@@ -69,24 +65,24 @@ export async function createTourNamespace(tourId: string) {
           return;
         }
 
-        // Send notification if draft is already in progress
-        if (draftStarted) {
-          socket.emit(SocketEvents.SERVER_DRAFT_ALREADY_STARTED);
-          // TODO: Disconnect socket??
-          return;
-        }
+            // Send notification if draft is already in progress
+            if (draftStarted) {
+                socket.emit(SocketEvents.SERVER_DRAFT_ALREADY_STARTED);
+                // TODO: Disconnect socket??
+                return;
+            }
 
-        // Check if player has already connected
-        const existingPlayer = draftPlayers.find(
-          (draftPlayer) => draftPlayer.player.id === player.id
-        );
-        if (existingPlayer) {
-          console.warn('A duplicate player connected. Not adding to list');
-        }
+            // Check if player has already connected
+            const existingPlayer = draftPlayers.find((draftPlayer) => draftPlayer.player.id === player.id);
+            if (existingPlayer) {
+                console.warn('A duplicate player connected. Not adding to list');
+                socket.disconnect();
+                return;
+            }
 
-        //* Add player to list of joined players
-        draftPlayers.push(new DraftPlayer(player, socket));
-        //updateJoinedPlayers();
+            //* Add player to list of joined players
+            draftPlayers.push(new DraftPlayer(player, socket));
+            //updateJoinedPlayers();
 
         //* Send current draft state
         socket.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
@@ -222,51 +218,58 @@ export async function createTourNamespace(tourId: string) {
               tourNamespace.sockets.forEach((socket) => socket.disconnect());
             });
 
-            socket.on('disconnect', () => {
-              turn--;
-              if (draftPlayers.length === 0) {
-                clearTimeout(timeout);
-                clearInterval(timerInterval);
-                draftStarted = false;
-              }
-            });
-          }, DRAFT_COUNTDOWN_TIME);
+                    socket.on('disconnect', () => {
+                        turn--;
+                        if (draftPlayers.length === 0) {
+                            clearTimeout(timeout);
+                            clearInterval(timerInterval);
+                            draftStarted = false;
+                        }
+                    });
+                }, DRAFT_COUNTDOWN_TIME);
 
-          socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
-            disconnectPlayer();
-            // Check if this is the last player to complete a lineup
-            if (draftPlayers.length == 0) {
-              // Write the left over picks to the server
+                    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
+                        console.info(`Lineup complete for player ${player.displayName}. Disconnecting.`);
+                        disconnectPlayer();
+                        // Check if this is the last player to complete a lineup
+                        if (draftPlayers.length == 0) {
+                            // Write the left over picks to the server
+    
+                            let leftOverPicks: DrumCorpsCaptionObject[] = [];
+                            availablePicks.forEach((pick) => {
+                                leftOverPicks.push({
+                                    id: pick.drumCorpsCaptionId,
+                                    corps: pick.corps.toString(),
+                                    caption: pick.caption.toString(),
+                                });
+                            });
+                            const remainingPicks = new RemainingPicks();
+                            remainingPicks.tourId = tour.id;
+                            remainingPicks.leftOverPicks = leftOverPicks;
+                            saveRemainingPicks(remainingPicks);
+                            markTourComplete(tour);
+                        }
+                    }); // End client lineup complete listener
+                }, DRAFT_COUNTDOWN_TIME);
 
-              let leftOverPicks: DrumCorpsCaptionObject[] = [];
-              availablePicks.forEach((pick) => {
-                leftOverPicks.push({
-                  id: pick.drumCorpsCaptionId,
-                  corps: pick.corps.toString(),
-                  caption: pick.caption.toString(),
-                });
-              });
-              const remainingPicks = new RemainingPicks();
-              remainingPicks.tourId = tour.id;
-              remainingPicks.leftOverPicks = leftOverPicks;
-              saveRemainingPicks(remainingPicks);
-              markTourComplete(tour);
-            }
-          });
-        }); // End draft start listener
 
-        //* Client emits this event to cancel the countdown before draft begins
-        socket.on(SocketEvents.CLIENT_CANCEL_DRAFT_COUNTDOWN, function () {
-          if (draftCountdown) {
-            console.log('The draft countdown is being cancelled');
-            draftCountingDown = false;
-            clearTimeout(draftCountdown);
-            tourNamespace.emit(SocketEvents.SERVER_DRAFT_COUNTDOWN_CANCELLED);
-          }
-        }); // End client cancel draft listener
-      }
-    ); // End client sends identification
+            });// End draft start listener
 
+            //* Client emits this event to cancel the countdown before draft begins
+            socket.on(SocketEvents.CLIENT_CANCEL_DRAFT_COUNTDOWN, function () {
+                if (draftCountdown) {
+                    console.log('The draft countdown is being cancelled');
+                    draftCountingDown = false;
+                    clearTimeout(draftCountdown);
+                    tourNamespace.emit(
+                        SocketEvents.SERVER_DRAFT_COUNTDOWN_CANCELLED
+                    );
+                }
+            }); // End client cancel draft listener
+
+
+        }); // End client sends identification
+      
     //* Removes the player from the active list so the server stops tracking their turns
     function disconnectPlayer(): void {
       const foundIndex = draftPlayers.findIndex(
@@ -294,8 +297,10 @@ export async function createTourNamespace(tourId: string) {
         `Players updated. ${draftPlayers.length} players connected.`
       );
     } // End updateJoinedPlayers()
+
   }); // End tourNamespace onConnect
 }
+
 
 //* Retrieve player object from Firebase
 async function getPlayer(playerId: string): Promise<Player> {

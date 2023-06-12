@@ -38,7 +38,7 @@ let draftCountingDown = false;
 let draftStarted = false;
 let draftCountdown: NodeJS.Timeout;
 
-const tours = io.of(/^[a-zA-Z0-9]*$/);
+const tours = io.of(/^\/\w+$/);
 
 tours.on('connection', function (socket: Socket) {
   const tourNamespace = socket.nsp;

@@ -39,6 +39,7 @@ tours.on('connection', async function (socket: Socket) {
   // Get the connected namespace and parse tour ID from name
   const tourNamespace = socket.nsp;
   const tourId = tourNamespace.name.split('/')[1];
+
   // Create draft variables that apply to namespace
   let draftPlayers: DraftPlayer[] = [];
   let draftCountingDown = false;
@@ -63,12 +64,15 @@ tours.on('connection', async function (socket: Socket) {
     async function (data: ClientIdentification) {
       const player = await playerRepository.findById(data.playerId);
 
+
       // Check that player exists and disconnect if not found
       if (!player) {
         socket.emit(SocketEvents.SERVER_PLAYER_NOT_FOUND);
         socket.disconnect();
         return;
       }
+
+      console.info(`Player attempting to join: ${player.displayName}`);
 
       // Check for duplicate connection
       const existingPlayer = draftPlayers.find(
@@ -81,6 +85,7 @@ tours.on('connection', async function (socket: Socket) {
       }
 
       // Add player to list of joined players
+      console.info(`Adding new player: ${player.displayName}`)
       draftPlayers.push(new DraftPlayer(player, socket));
       updateJoinedPlayers();
 
@@ -89,6 +94,11 @@ tours.on('connection', async function (socket: Socket) {
         draftStarted,
         draftCountingDown,
       }); // End server sends draft state
+
+      // Handle client disconnection before draft start
+      socket.on('disconnect', function () {
+        disconnectPlayer();
+      }); // End on disconnect
 
       // Client sends draft start event and initates countdown
       socket.on(SocketEvents.CLIENT_START_DRAFT, function () {
@@ -233,6 +243,8 @@ tours.on('connection', async function (socket: Socket) {
             }
           }); // End on disconnect
         }, DRAFT_COUNTDOWN_TIME); // End draft countdown timeout
+
+
 
         // Run when client notifies their lineup is complete
         socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {

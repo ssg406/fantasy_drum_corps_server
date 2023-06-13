@@ -32,12 +32,6 @@ interface DrumCorpsCaptionObject {
 const DRAFT_COUNTDOWN_TIME = 100;
 const TURN_TIME_SECONDS = 45;
 
-// Create draft variables that apply to namespace
-let draftPlayers: DraftPlayer[] = [];
-let draftCountingDown = false;
-let draftStarted = false;
-let draftCountdown: NodeJS.Timeout;
-
 // Namespaces dynamically generated for all alphanumeric IDs beginning with '/'
 const tours = io.of(/^\/[A-Za-z0-9]+$/);
 
@@ -45,6 +39,11 @@ tours.on('connection', async function (socket: Socket) {
   // Get the connected namespace and parse tour ID from name
   const tourNamespace = socket.nsp;
   const tourId = tourNamespace.name.split('/')[1];
+  // Create draft variables that apply to namespace
+  let draftPlayers: DraftPlayer[] = [];
+  let draftCountingDown = false;
+  let draftStarted = false;
+  let draftCountdown: NodeJS.Timeout;
 
   // Locate the tour in the repository
   const tour = await toursRepository.findById(tourId);

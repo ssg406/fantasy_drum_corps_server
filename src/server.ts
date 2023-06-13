@@ -17,15 +17,6 @@ app.use(cors());
 
 app.use(bodyParser.json());
 
-// app.post(
-//   '/addTour',
-//   function (req: Request, res: Response, next: NextFunction) {
-//     const { tourId } = req.body;
-//     createTourNamespace(tourId);
-//     res.status(201);
-//   }
-// );
-
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {

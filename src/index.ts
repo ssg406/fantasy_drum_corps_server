@@ -66,7 +66,6 @@ tours.on('connection', async function (socket: Socket) {
     async function (data: ClientIdentification) {
       const player = await playerRepository.findById(data.playerId);
 
-
       // Check that player exists and disconnect if not found
       if (!player) {
         socket.emit(SocketEvents.SERVER_PLAYER_NOT_FOUND);
@@ -87,7 +86,7 @@ tours.on('connection', async function (socket: Socket) {
       }
 
       // Add player to list of joined players
-      console.info(`Adding new player: ${player.displayName}`)
+      console.info(`Adding new player: ${player.displayName}`);
       draftPlayers.push(new DraftPlayer(player, socket));
       updateJoinedPlayers();
 
@@ -237,7 +236,8 @@ tours.on('connection', async function (socket: Socket) {
 
           // Run cleanup when socket disconnects from namespace
           socket.on('disconnect', function () {
-            turn--;
+            // turn should not go below 0 to prevent array out of bounds error
+            turn = turn === 0 ? 0 : turn - 1;
             if (draftPlayers.length === 0) {
               clearTimeout(timeout);
               clearInterval(timerInterval);
@@ -245,8 +245,6 @@ tours.on('connection', async function (socket: Socket) {
             }
           }); // End on disconnect
         }, DRAFT_COUNTDOWN_TIME); // End draft countdown timeout
-
-
 
         // Run when client notifies their lineup is complete
         socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {

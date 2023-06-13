@@ -59,6 +59,8 @@ tours.on('connection', async function (socket: Socket) {
 
   console.info(`Generated namespace for tour ${tourId}`);
 
+  tourNamespace.emit(SocketEvents.SERVER_TOUR_FOUND);
+
   socket.on(
     SocketEvents.CLIENT_SENDS_IDENTIFICATION,
     async function (data: ClientIdentification) {

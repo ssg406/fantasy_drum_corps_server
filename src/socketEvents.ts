@@ -24,4 +24,5 @@ export namespace SocketEvents {
   export const SERVER_SENDS_PLAYER_PICK = 'SERVER_SENDS_PLAYER_PICK';
   export const CLIENT_LINEUP_COMPLETE = 'CLIENT_LINEUP_COMPLETE';
   export const SERVER_TOUR_NOT_FOUND = 'SERVER_TOUR_NOT_FOUND';
+  export const SERVER_TOUR_FOUND = 'SERVER_TOUR_FOUND';
 }

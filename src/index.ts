@@ -7,7 +7,6 @@ import {
 } from './data';
 import { DraftPlayer } from './models/DraftPlayer';
 import DrumCorpsCaption from './models/DrumCorpsCaption';
-import { Player } from './models/Player';
 import { RemainingPicks } from './models/RemainingPicks';
 import io from './server';
 import { SocketEvents } from './socketEvents';
@@ -35,39 +34,42 @@ const TURN_TIME_SECONDS = 45;
 // Namespaces dynamically generated for all alphanumeric IDs beginning with '/'
 const tours = io.of(/^\/[A-Za-z0-9]+$/);
 
+let draftPlayers: DraftPlayer[] = [];
+let draftCountingDown = false;
+let draftStarted = false;
+let draftCountdown: NodeJS.Timeout;
+
 tours.on('connection', async function (socket: Socket) {
-  // Get the connected namespace and parse tour ID from name
-  const tourNamespace = socket.nsp;
-  const tourId = tourNamespace.name.split('/')[1];
+  console.info(`Incoming connection to namespace ${socket.nsp.name}`);
 
-  // Create draft variables that apply to namespace
-  let draftPlayers: DraftPlayer[] = [];
-  let draftCountingDown = false;
-  let draftStarted = false;
-  let draftCountdown: NodeJS.Timeout;
-
-  // Locate the tour in the repository
-  const tour = await toursRepository.findById(tourId);
-
-  // If tour does not exist emit an error and return
-  if (!tour) {
-    console.error(`Could not locate tour with ID ${tourId}`);
-    tourNamespace.emit(SocketEvents.SERVER_TOUR_NOT_FOUND);
-    socket.disconnect();
-    return;
-  }
-
-  console.info(`Generated namespace for tour ${tourId}`);
-
-  tourNamespace.emit(SocketEvents.SERVER_TOUR_FOUND);
-
+  // Server receives player ID from client to join draft
   socket.on(
     SocketEvents.CLIENT_SENDS_IDENTIFICATION,
     async function (data: ClientIdentification) {
+      console.info(`Receiving ID from client: ${data.playerId}`);
+
+      // Locate tour
+      const tourId = socket.nsp.name.split('/')[1];
+
+      // Locate the tour in the repository
+      const tour = await toursRepository.findById(tourId);
+
+      // If tour does not exist emit an error and return
+      if (!tour) {
+        console.error(`Could not locate tour with ID ${tourId}`);
+        socket.emit(SocketEvents.SERVER_TOUR_NOT_FOUND);
+        socket.disconnect();
+        return;
+      }
+
+      // Create namespace for existing tour
+      const tourNamespace = socket.nsp;
+
       const player = await playerRepository.findById(data.playerId);
 
       // Check that player exists and disconnect if not found
       if (!player) {
+        console.warn(`Player not found`);
         socket.emit(SocketEvents.SERVER_PLAYER_NOT_FOUND);
         socket.disconnect();
         return;
@@ -91,7 +93,7 @@ tours.on('connection', async function (socket: Socket) {
       updateJoinedPlayers();
 
       //* Send current draft state
-      socket.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
+      tourNamespace.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
         draftStarted,
         draftCountingDown,
       }); // End server sends draft state
@@ -107,14 +109,14 @@ tours.on('connection', async function (socket: Socket) {
 
         // Set countdown flag to true and emit countdown start event to namespace
         draftCountingDown = true;
-        tourNamespace.emit(SocketEvents.SERVER_BEGIN_DRAFT_COUNTDOWN);
+        tours.emit(SocketEvents.SERVER_BEGIN_DRAFT_COUNTDOWN);
         let availablePicks = allPicks;
 
         // Begin draft after initial countdown
         draftCountdown = setTimeout(() => {
           // Set draft started flag and enable in-draft events after countdown
           draftStarted = true;
-          tourNamespace.emit(SocketEvents.SERVER_DRAFT_TURNS_BEGIN);
+          tours.emit(SocketEvents.SERVER_DRAFT_TURNS_BEGIN);
           draftCountingDown = false;
 
           let timeout: NodeJS.Timeout;
@@ -128,7 +130,7 @@ tours.on('connection', async function (socket: Socket) {
             console.log('next turn triggered ', turn);
             turn = currentTurn++ % draftPlayers.length;
             const turnAfter = (currentTurn + 2) % draftPlayers.length;
-            tourNamespace.emit(SocketEvents.SERVER_STARTS_TURN, {
+            tours.emit(SocketEvents.SERVER_STARTS_TURN, {
               availablePicks,
               currentPick: draftPlayers[turn].player.id,
               currentPickName: draftPlayers[turn].player.displayName,
@@ -141,7 +143,7 @@ tours.on('connection', async function (socket: Socket) {
           // Starts the timer for each turn
           function triggerTimeout() {
             timerInterval = setInterval(() => {
-              tourNamespace.emit(SocketEvents.SERVER_UPDATE_TURN_TIMER, {
+              tours.emit(SocketEvents.SERVER_UPDATE_TURN_TIMER, {
                 remainingTime,
               });
               console.log('Remaining time: ', remainingTime);
@@ -195,7 +197,7 @@ tours.on('connection', async function (socket: Socket) {
                   pick.drumCorpsCaptionId !==
                   data.drumCorpsCaption.drumCorpsCaptionId
               );
-              tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+              tours.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
                 lastPick: data.drumCorpsCaption,
               });
             }
@@ -211,7 +213,7 @@ tours.on('connection', async function (socket: Socket) {
             console.info(
               `Client sent pick during turn: ${data.drumCorpsCaption}`
             );
-            tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+            tours.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
               lastPick: data.drumCorpsCaption,
             });
 
@@ -230,11 +232,11 @@ tours.on('connection', async function (socket: Socket) {
             resetInterval();
             resetTimeOut();
             updateJoinedPlayers();
-            tourNamespace.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
-            tourNamespace.sockets.forEach((socket) => socket.disconnect());
+            tours.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
+            tours.sockets.forEach((socket) => socket.disconnect());
           }); // End of on client cancel d raft
 
-          // Run cleanup when socket disconnects from namespace
+          // Run cleanup when socket disconnects from namespaced
           socket.on('disconnect', function () {
             // turn should not go below 0 to prevent array out of bounds error
             turn = turn === 0 ? 0 : turn - 1;
@@ -303,7 +305,7 @@ tours.on('connection', async function (socket: Socket) {
   // Create and send list of joined players to draft lobbies on clients
   function updateJoinedPlayers(): void {
     const joinedPlayers = draftPlayers.map((draftPlayer) => draftPlayer.player);
-    tourNamespace.emit(SocketEvents.SERVER_UPDATE_JOINED_PLAYERS, {
+    tours.emit(SocketEvents.SERVER_UPDATE_JOINED_PLAYERS, {
       joinedPlayers,
     });
     console.info(`Players updated. ${draftPlayers.length} players connected.`);

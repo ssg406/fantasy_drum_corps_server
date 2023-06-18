@@ -51,7 +51,7 @@ export async function createTourNamespace(tourId: string) {
 
   // User connects to tour namespace
   tourNamespace.on('connection', (socket: Socket) => {
-    console.info(`Connection made to namespace ${tourId}. Tour: ${tour.name}`);
+    console.info(`Connection made to namespace ${tourId}. Tour: ${tour.name}`);5
 
     socket.on(
       SocketEvents.CLIENT_SENDS_IDENTIFICATION,

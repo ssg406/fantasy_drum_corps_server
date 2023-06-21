@@ -3,7 +3,7 @@ import http from 'http';
 import cors from 'cors';
 import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import { toursRepository } from 'data';
+import { toursRepository } from './data';
 //For local development
 import * as dotenv from 'dotenv';
 

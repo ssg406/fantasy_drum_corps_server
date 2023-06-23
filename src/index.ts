@@ -1,80 +1,58 @@
-import { Socket } from 'socket.io';
-import { allPicks } from './allPicks';
-import {
-  playerRepository,
-  remainingPicksRepository,
-  toursRepository,
-} from './data';
-import { DraftPlayer } from './models/DraftPlayer';
-import DrumCorpsCaption from './models/DrumCorpsCaption';
-import { RemainingPicks } from './models/RemainingPicks';
-import io from './server';
-import { SocketEvents } from './socketEvents';
-import Tour from './models/Tour';
-import { Player } from './models/Player';
-import { ClientIdentification } from './types';
-import { tourDraft } from './tourRoom';
-export const roomsMap: Map<string, DraftPlayer[]> = new Map();
+import { Server } from 'socket.io';
+import http from 'http';
+import cors from 'cors';
+import express, { NextFunction, Request, Response } from 'express';
+import bodyParser from 'body-parser';
+import { toursRepository } from './data';
+//For local development
+import * as dotenv from 'dotenv';
+import { createTourNamespace } from './createNamespaces';
 
-io.on('connection', function (socket: Socket) {
-  console.info('Incoming connection to Socket.io server');
+dotenv.config();
 
-  socket.on(
-    SocketEvents.CLIENT_SENDS_IDENTIFICATION,
-    async function (data: ClientIdentification) {
+const PORT = parseInt(<string>process.env.PORT) || 3000;
+
+const app = express();
+
+app.use(cors());
+
+app.use(
+  bodyParser.urlencoded({
+    extended: true,
+  })
+);
+
+app.patch(
+  '/createNamespace',
+  (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { tourId } = req.body;
+      console.log(req.body);
       console.info(
-        `Got client ID\nPlayer ID: ${data.playerId} Tour ID: ${data.tourId}`
+        `Received request to create namespace for tour ID ${tourId}`
       );
-      const player = await playerRepository.findById(data.playerId);
-      const tour = await toursRepository.findById(data.tourId);
-
-      // Disconnect if player was not found
-      if (!player) {
-        socket.emit(SocketEvents.SERVER_PLAYER_NOT_FOUND);
-        socket.disconnect();
-        return;
+      if (!tourId) {
+        throw new Error('Invalid tour ID');
       }
-
-      // Disconnect if tour was not found
-      if (!tour) {
-        socket.emit(SocketEvents.SERVER_TOUR_NOT_FOUND);
-        socket.disconnect();
-        return;
-      }
-
-      // Add player to the rooms map
-      if (!addPlayer(tour.id, player, socket)) return;
-
-      // If player is the tour owner, call the draft function
-      if (tour.owner === player.id) {
-        tourDraft(tour, player, socket);
-      }
+      createTourNamespace(tourId);
+      res.status(200).send({ message: 'Tour namespace created' });
+    } catch (error) {
+      res.status(400).send({ message: 'Error creating namespace' });
     }
-  );
+  }
+);
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+  },
 });
 
-function addPlayer(tourId: string, player: Player, socket: Socket): boolean {
-  let playersList = roomsMap.get(tourId);
+// Start server
+server.listen(PORT, () => {
+  console.info(`Server listening on port ${PORT}`);
+});
 
-  if (!playersList) {
-    playersList = [new DraftPlayer(player, socket)];
-  } else {
-    const existingPlayer = playersList.find(
-      (draftPlayer) => draftPlayer.player.id === player.id
-    );
-    if (existingPlayer) {
-      console.warn('A duplicate player connected. Not adding to list');
-      socket.disconnect();
-      return false;
-    }
-    console.info(`Adding player: ${player.displayName}`);
-    playersList.push(new DraftPlayer(player, socket));
-  }
-
-  roomsMap.set(tourId, playersList);
-
-  // Move the player to the tour draft room
-  socket.join(tourId);
-
-  return true;
-}
+export default io;

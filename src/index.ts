@@ -14,7 +14,6 @@ import Tour from './models/Tour';
 import { Player } from './models/Player';
 import { ClientIdentification } from './types';
 import { tourDraft } from './tourRoom';
-
 export const roomsMap: Map<string, DraftPlayer[]> = new Map();
 
 io.on('connection', function (socket: Socket) {

@@ -70,7 +70,7 @@ export async function createTourNamespace(tourId: string) {
         // Add player to list
         console.info(`Adding player: ${player.displayName}`);
         draftPlayers.push(new DraftPlayer(player, socket));
-
+        updateJoinedPlayers();
         tourNamespace.emit(SocketEvents.SERVER_SENDS_DRAFT_STATE, {
           draftStarted,
           draftCountingDown,
@@ -119,7 +119,9 @@ export async function createTourNamespace(tourId: string) {
             remainingTime = remainingTime === 0 ? 0 : remainingTime - 1;
           }, 1000);
           timeout = setTimeout(() => {
-            console.log('No pick received');
+            console.log(
+              `No pick received from player ${draftPlayers[turn].player.displayName}`
+            );
             // If turn times out emit a notice to the socket and the client will auto select
             draftPlayers[turn].socket.emit(
               SocketEvents.SERVER_NO_PICK_RECEIVED
@@ -156,11 +158,59 @@ export async function createTourNamespace(tourId: string) {
           resetInterval();
           resetTimeout();
           tourNamespace.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
-          draftPlayers.forEach((player) => player.socket.disconnect());
+          tourNamespace.sockets.forEach((socket) => socket.disconnect());
         });
 
         // Begin first turn
         nextTurn();
+
+        // Client sends automatic pick when player runs out of time
+        draftPlayers[turn].socket.on(
+          SocketEvents.CLIENT_SENDS_AUTO_PICK,
+          function (data: ClientPick) {
+            console.info(
+              `Server received auto pick from client: ${data.drumCorpsCaption}`
+            );
+            onPickReceived(data);
+          }
+        );
+
+        draftPlayers[turn].socket.on(
+          SocketEvents.CLIENT_ENDS_TURN,
+          function (data: ClientPick) {
+            console.info(
+              `Server received pick from client: ${data.drumCorpsCaption}`
+            );
+            onPickReceived(data);
+            resetTimeout();
+            resetInterval();
+            nextTurn();
+          }
+        );
+
+        function onPickReceived(data: ClientPick) {
+          // Remove selection from available picks and emit pick
+          availablePicks = availablePicks.filter(
+            (pick) =>
+              pick.drumCorpsCaptionId !==
+              data.drumCorpsCaption.drumCorpsCaptionId
+          );
+          console.info(
+            `Client sent pick during turn: ${data.drumCorpsCaption}`
+          );
+          tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+            lastPick: data.drumCorpsCaption,
+          });
+        }
+
+        socket.on('disconnect', () => {
+          turn = turn === 0 ? 0 : turn - 1;
+          if (draftPlayers.length === 0) {
+            clearTimeout(timeout);
+            clearInterval(timerInterval);
+            draftStarted = false;
+          }
+        });
       }, DRAFT_COUNTDOWN_TIME); // end draft timeout
     }); // end socket.on client start draft
 
@@ -174,38 +224,24 @@ export async function createTourNamespace(tourId: string) {
       }
     });
 
-    // Client sends automatic pick when player runs out of time
-    socket.on(SocketEvents.CLIENT_SENDS_AUTO_PICK, function (data: ClientPick) {
-      console.info(
-        `Server received auto pick from client: ${data.drumCorpsCaption}`
-      );
-      onPickReceived(data);
+    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function () {
+      socket.disconnect();
+      onLineupComplete();
     });
-
-    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, onLineupComplete);
 
     socket.on('disconnect', function () {
-      turn = turn === 0 ? 0 : turn - 1;
-      if (draftPlayers.length === 0) {
-        clearTimeout(timeout);
-        clearInterval(timerInterval);
-        draftStarted = false;
+      const foundIndex = draftPlayers.findIndex(
+        (draftPlayer) => draftPlayer.socket.id === socket.id
+      );
+      if (foundIndex !== -1) {
+        console.info(
+          `Player ${draftPlayers[foundIndex].player.displayName} is disconnecting and being removed from active list.`
+        );
+        draftPlayers.splice(foundIndex, 1);
+        updateJoinedPlayers();
       }
-      disconnectPlayer();
     });
   });
-
-  function onPickReceived(data: ClientPick) {
-    // Remove selection from available picks and emit pick
-    availablePicks = availablePicks.filter(
-      (pick) =>
-        pick.drumCorpsCaptionId !== data.drumCorpsCaption.drumCorpsCaptionId
-    );
-    console.info(`Client sent pick during turn: ${data.drumCorpsCaption}`);
-    tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
-      lastPick: data.drumCorpsCaption,
-    });
-  }
 
   // Create and send list of joined players to draft lobbies on clients
   function updateJoinedPlayers(): void {
@@ -214,20 +250,6 @@ export async function createTourNamespace(tourId: string) {
       joinedPlayers,
     });
     console.info(`Players updated. ${draftPlayers.length} players connected.`);
-  }
-
-  function disconnectPlayer(): void {
-    console.info(`Disconnect player called`);
-    const foundIndex = draftPlayers.findIndex(
-      (draftPlayer) => draftPlayer.player.id === player.id
-    );
-    if (foundIndex !== -1) {
-      console.info(
-        `Player ${draftPlayers[foundIndex].player.displayName} is disconnecting and being removed from active list.`
-      );
-      draftPlayers.splice(foundIndex, 1);
-      updateJoinedPlayers();
-    }
   }
 
   //* Save the remaining picks to the server to use for additonal lineups
@@ -256,7 +278,6 @@ export async function createTourNamespace(tourId: string) {
     console.info(
       `Lineup complete for player ${player.displayName}. Disconnecting.`
     );
-    disconnectPlayer();
     // Check if this is the last player to complete a lineup
     if (draftPlayers.length == 0) {
       // Write the left over picks to the server

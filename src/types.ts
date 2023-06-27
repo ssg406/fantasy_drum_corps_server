@@ -2,7 +2,6 @@ import DrumCorpsCaption from './models/DrumCorpsCaption';
 
 export interface ClientIdentification {
   playerId: string;
-  tourId: string;
 }
 
 export interface ClientPick {

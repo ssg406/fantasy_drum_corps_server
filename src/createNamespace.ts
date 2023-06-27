@@ -19,7 +19,15 @@ import { RemainingPicks } from './models/RemainingPicks';
 //* Constants
 const DRAFT_COUNTDOWN_TIME = 5000;
 
+let existingNamespaces: string[] = [];
+
 export async function createTourNamespace(tourId: string): Promise<void> {
+
+  // Do not create namespace listeners again if already exist in memory
+  if (existingNamespaces.includes(tourId)) {
+    console.warn(`Namespace for tour ${tourId} already exists. Returning`);
+  }
+
   let currentTurnIndex: number = 0;
   let nextTurnIndex: number;
   let roundNumber: number = 0;
@@ -30,6 +38,7 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   let draftCountdownTimeout: NodeJS.Timeout;
 
   const tourNamespace = io.of(`/${tourId}`);
+  existingNamespaces.push(tourId);
 
   // Handle SIGTERM / SIGINT / and uncaught exceptions per-namespace
   process

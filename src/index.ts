@@ -6,7 +6,7 @@ import bodyParser from 'body-parser';
 import { toursRepository } from './data';
 //For local development
 import * as dotenv from 'dotenv';
-import { createTourNamespace } from './createNamespaces';
+import { createTourNamespace } from './createNamespace';
 
 dotenv.config();
 

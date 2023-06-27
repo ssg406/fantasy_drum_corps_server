@@ -8,7 +8,7 @@ import {
 import { DraftPlayer } from './models/DraftPlayer';
 import DrumCorpsCaption from './models/DrumCorpsCaption';
 import { RemainingPicks } from './models/RemainingPicks';
-import io from './index';
+import io from '.';
 import { SocketEvents } from './socketEvents';
 import Tour from './models/Tour';
 import { Player } from './models/Player';

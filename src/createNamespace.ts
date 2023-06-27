@@ -67,6 +67,9 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.info(`[DRAFT ${tourId}] Tour owner cancelled the draft`);
     playerList = [];
     draftStarted = false;
+    draftCountingDown = false;
+    roundNumber = 0;
+    currentTurnIndex = 0;
     tourNamespace.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
     tourNamespace.sockets.forEach((socket) => socket.disconnect());
   }
@@ -167,10 +170,12 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.info(
       `[DRAFT ${tourId}] Removing pick ID ${data.drumCorpsCaption.drumCorpsCaptionId} from available picks`
     );
-    tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
-      lastPick: data.drumCorpsCaption,
-    });
-    turnStart();
+    if (draftStarted) {
+      tourNamespace.emit(SocketEvents.SERVER_SENDS_PLAYER_PICK, {
+        lastPick: data.drumCorpsCaption,
+      });
+      turnStart();
+    }
   }
 
   function removePlayer(playerId: string) {
@@ -187,6 +192,12 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   }
 
   async function endDraft() {
+    draftStarted = false;
+    draftCountingDown = false;
+    playerList = [];
+    currentTurnIndex = 0;
+    roundNumber = 0;
+
     console.info(`[DRAFT ${tourId}] All tour lineups complete, ending draft.`);
     // Mark tour as draft complete and update in repository
     const tour = await toursRepository.findById(tourId);
@@ -206,7 +217,7 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     const remainingPicks = new RemainingPicks();
     remainingPicks.tourId = tour.id;
     remainingPicks.leftOverPicks = leftOverPicks;
-    remainingPicksRepository.create(remainingPicks);
+    await remainingPicksRepository.create(remainingPicks);
     console.info(
       `[DRAFT ${tourId}] Writing remaining picks to repository. ${leftOverPicks.length} picks remaining.`
     );

@@ -1,5 +1,5 @@
 import { Server } from 'socket.io';
-import { SocketEvents } from 'socketEvents';
+import { SocketEvents } from './socketEvents';
 
 export function handleShutdown(io: Server, signal: String) {
   console.error(`[DRAFT SERVER] Received signal ${signal}. Shutting down`);

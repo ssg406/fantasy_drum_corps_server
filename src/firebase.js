@@ -1,11 +1,11 @@
 import admin from 'firebase-admin';
 import { initializeApp } from 'firebase-admin/app';
 //For local devlopment
-import * as dotenv from 'dotenv';
-dotenv.config();
+// import * as dotenv from 'dotenv';
+// dotenv.config();
 
 // Use this line in production
-//const { privateKey } = JSON.parse(process.env.FIREBASE_PRIVATE_KEY);
+const { privateKey } = JSON.parse(process.env.FIREBASE_PRIVATE_KEY);
 
 // Initialize Firebase admin
 initializeApp({
@@ -14,7 +14,7 @@ initializeApp({
     project_id: process.env.FIREBASE_PROJECT_ID,
     private_key_id: process.env.FIREBASE_PRIVATE_KEY_ID,
     // change to privateKey for production
-    private_key: process.env.FIREBASE_PRIVATE_KEY,
+    private_key: privateKey,
     client_email: process.env.FIREBASE_CLIENT_EMAIL,
     client_id: process.env.FIREBASE_CLIENT_ID,
     auth_uri: process.env.FIREBASE_AUTH_URI,

@@ -5,11 +5,10 @@ import express, { NextFunction, Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { toursRepository } from './data';
 // For local development
-import * as dotenv from 'dotenv';
-dotenv.config();
+// import * as dotenv from 'dotenv';
+// dotenv.config();
 // End for local development
 import { createTourNamespace } from './createNamespace';
-import { handleShutdown } from './handleShutdown';
 
 const PORT = parseInt(<string>process.env.PORT) || 3000;
 
@@ -50,12 +49,6 @@ const io = new Server(server, {
     methods: ['GET', 'POST'],
   },
 });
-
-// Handle SIGTERM / SIGINT / and uncaught exceptions
-process
-  .on('SIGTERM', () => handleShutdown(io, 'SIGTERM'))
-  .on('SIGINT', () => handleShutdown(io, 'SIGINT'))
-  .on('uncaughtException', () => handleShutdown(io, 'uncaughtException'));
 
 // Start server
 server.listen(PORT, () => {

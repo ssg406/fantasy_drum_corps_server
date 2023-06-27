@@ -1,7 +1,6 @@
 import { Socket } from 'socket.io';
 import io from '.';
 import DrumCorpsCaption from './models/DrumCorpsCaption';
-import { Player } from './models/Player';
 import { SocketEvents } from './socketEvents';
 import {
   ClientIdentification,
@@ -31,6 +30,19 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   let draftCountdownTimeout: NodeJS.Timeout;
 
   const tourNamespace = io.of(`/${tourId}`);
+
+  // Handle SIGTERM / SIGINT / and uncaught exceptions per-namespace
+  process
+    .on('SIGTERM', () => handleShutdown('SIGTERM'))
+    .on('SIGINT', () => handleShutdown('SIGINT'))
+    .on('uncaughtException', () => handleShutdown('uncaughtException'));
+
+  function handleShutdown(signal: String) {
+    console.error(`[DRAFT SERVER] Received signal ${signal}. Shutting down`);
+    tourNamespace.emit(SocketEvents.SERVER_FATAL_ERROR);
+    tourNamespace.sockets.forEach((socket) => socket.disconnect());
+    process.exit();
+  }
 
   tourNamespace.on('connection', function (socket: Socket) {
     socket.on(

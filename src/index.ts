@@ -9,6 +9,7 @@ import { toursRepository } from './data';
 // dotenv.config();
 // End for local development
 import { createTourNamespace } from './createNamespace';
+import { handleShutdown } from 'handleShutdown';
 
 const PORT = parseInt(<string>process.env.PORT) || 3000;
 
@@ -54,5 +55,11 @@ const io = new Server(server, {
 server.listen(PORT, () => {
   console.info(`Server listening on port ${PORT}`);
 });
+
+// Handle SIGTERM / SIGINT / and uncaught exceptions
+process
+  .on('SIGTERM', () => handleShutdown(io, 'SIGTERM'))
+  .on('SIGINT', () => handleShutdown(io, 'SIGINT'))
+  .on('uncaughtException', () => handleShutdown(io, 'uncaughtException'));
 
 export default io;

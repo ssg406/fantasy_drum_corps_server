@@ -25,4 +25,5 @@ export namespace SocketEvents {
   export const CLIENT_LINEUP_COMPLETE = 'CLIENT_LINEUP_COMPLETE';
   export const SERVER_TOUR_NOT_FOUND = 'SERVER_TOUR_NOT_FOUND';
   export const SERVER_TOUR_FOUND = 'SERVER_TOUR_FOUND';
+  export const SERVER_FATAL_ERROR = 'SERVER_FATAL_ERROR';
 }

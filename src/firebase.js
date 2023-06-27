@@ -4,6 +4,7 @@ import { initializeApp } from 'firebase-admin/app';
 // import * as dotenv from 'dotenv';
 // dotenv.config();
 
+// Use this line in production
 const { privateKey } = JSON.parse(process.env.FIREBASE_PRIVATE_KEY);
 
 // Initialize Firebase admin

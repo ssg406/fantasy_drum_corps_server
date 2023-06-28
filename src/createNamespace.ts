@@ -50,6 +50,11 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.error(`[DRAFT SERVER] Received signal ${signal}. Shutting down`);
     tourNamespace.emit(SocketEvents.SERVER_FATAL_ERROR);
     tourNamespace.sockets.forEach((socket) => socket.disconnect());
+    draftStarted = false;
+    draftCountingDown = false;
+    playerList = [];
+    currentTurnIndex = 0;
+    roundNumber = 0;
     process.exit();
   }
 

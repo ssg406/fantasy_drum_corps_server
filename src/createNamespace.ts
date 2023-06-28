@@ -231,7 +231,10 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.info(`[DRAFT ${tourId}] All tour lineups complete, ending draft.`);
     // Mark tour as draft complete and update in repository
     const tour = await toursRepository.findById(tourId);
-    if (!tour) return;
+    if (!tour) {
+      console.warn(`[DRAFT ${tourId}] Unable to mark draft as complete`);
+      return;
+    }
     tour.draftComplete = true;
     await toursRepository.update(tour);
 

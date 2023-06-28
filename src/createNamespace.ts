@@ -26,6 +26,7 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   // Do not create namespace listeners again if already exist in memory
   if (existingNamespaces.includes(tourId)) {
     console.warn(`Namespace for tour ${tourId} already exists. Returning`);
+    return;
   }
 
   let currentTurnIndex: number = 0;
@@ -49,7 +50,8 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   function handleShutdown(signal: String) {
     console.error(`[DRAFT SERVER] Received signal ${signal}. Shutting down`);
     tourNamespace.emit(SocketEvents.SERVER_FATAL_ERROR);
-    tourNamespace.sockets.forEach((socket) => socket.disconnect());
+    tourNamespace.local.disconnectSockets();
+    io._nsps.delete(`/${tourId}`);
     draftStarted = false;
     draftCountingDown = false;
     playerList = [];
@@ -85,11 +87,6 @@ export async function createTourNamespace(tourId: string): Promise<void> {
         (player) => player.socket.id !== socket.id
       );
       currentTurnIndex = currentTurnIndex === 0 ? 0 : currentTurnIndex - 1;
-      const socketCount = Object.keys(tourNamespace.sockets).length;
-      if (socketCount === 0) {
-        console.info(`[DRAFT ${tourId}] No sockets connected. Destroying namespace.`);
-        io._nsps.delete(`/${tourId}`);
-      }
     });
     socket.on(SocketEvents.CLIENT_CANCEL_DRAFT, cancelDraft);
   });

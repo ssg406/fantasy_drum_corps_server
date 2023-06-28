@@ -82,9 +82,6 @@ export async function createTourNamespace(tourId: string): Promise<void> {
         (player) => player.socket.id !== socket.id
       );
       currentTurnIndex = currentTurnIndex === 0 ? 0 : currentTurnIndex - 1;
-      if (playerList.length === 0) {
-        resetNamespace();
-      }
     });
     socket.on(SocketEvents.CLIENT_CANCEL_DRAFT, cancelDraft);
   });

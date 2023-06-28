@@ -85,6 +85,11 @@ export async function createTourNamespace(tourId: string): Promise<void> {
         (player) => player.socket.id !== socket.id
       );
       currentTurnIndex = currentTurnIndex === 0 ? 0 : currentTurnIndex - 1;
+      const socketCount = Object.keys(tourNamespace.sockets).length;
+      if (socketCount === 0) {
+        console.info(`[DRAFT ${tourId}] No sockets connected. Destroying namespace.`);
+        io._nsps.delete(`/${tourId}`);
+      }
     });
     socket.on(SocketEvents.CLIENT_CANCEL_DRAFT, cancelDraft);
   });
@@ -97,7 +102,9 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     roundNumber = 0;
     currentTurnIndex = 0;
     tourNamespace.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
-    tourNamespace.sockets.forEach((socket) => socket.disconnect());
+    tourNamespace.local.disconnectSockets();
+    console.info(`[DRAFT ${tourId}] Draft cancelled, destroying namespace`);
+    io._nsps.delete(`/${tourId}`);
   }
 
   // Add player to list
@@ -180,9 +187,6 @@ export async function createTourNamespace(tourId: string): Promise<void> {
       nextPickName: playerList[nextTurnIndex].player.displayName,
       roundNumber,
     });
-    // nextTurnIndex =
-    //   currentTurnIndex + 1 > playerList.length ? 0 : currentTurnIndex + 1;
-    // currentTurnIndex = nextTurnIndex;
   }
 
   function turnOver(data: ClientPick) {
@@ -247,7 +251,9 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.info(
       `[DRAFT ${tourId}] Writing remaining picks to repository. ${leftOverPicks.length} picks remaining.`
     );
-    tourNamespace.sockets.forEach((socket) => socket.disconnect());
+    tourNamespace.local.disconnectSockets();
+    console.info(`[DRAFT ${tourId}] Draft complete, destroying namespace.`);
+    io._nsps.delete(`/${tourId}`);
     //* Program Complete
   }
 }

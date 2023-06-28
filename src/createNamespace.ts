@@ -51,12 +51,7 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     console.error(`[DRAFT SERVER] Received signal ${signal}. Shutting down`);
     tourNamespace.emit(SocketEvents.SERVER_FATAL_ERROR);
     tourNamespace.local.disconnectSockets();
-    io._nsps.delete(`/${tourId}`);
-    draftStarted = false;
-    draftCountingDown = false;
-    playerList = [];
-    currentTurnIndex = 0;
-    roundNumber = 0;
+    resetNamespace();
     process.exit();
   }
 
@@ -87,21 +82,19 @@ export async function createTourNamespace(tourId: string): Promise<void> {
         (player) => player.socket.id !== socket.id
       );
       currentTurnIndex = currentTurnIndex === 0 ? 0 : currentTurnIndex - 1;
+      if (playerList.length === 0) {
+        resetNamespace();
+      }
     });
     socket.on(SocketEvents.CLIENT_CANCEL_DRAFT, cancelDraft);
   });
 
   function cancelDraft() {
     console.info(`[DRAFT ${tourId}] Tour owner cancelled the draft`);
-    playerList = [];
-    draftStarted = false;
-    draftCountingDown = false;
-    roundNumber = 0;
-    currentTurnIndex = 0;
     tourNamespace.emit(SocketEvents.SERVER_DRAFT_CANCELLED_BY_OWNER);
     tourNamespace.local.disconnectSockets();
     console.info(`[DRAFT ${tourId}] Draft cancelled, destroying namespace`);
-    io._nsps.delete(`/${tourId}`);
+    resetNamespace();
   }
 
   // Add player to list
@@ -219,11 +212,7 @@ export async function createTourNamespace(tourId: string): Promise<void> {
   }
 
   async function endDraft() {
-    draftStarted = false;
-    draftCountingDown = false;
-    playerList = [];
-    currentTurnIndex = 0;
-    roundNumber = 0;
+    resetNamespace();
 
     console.info(`[DRAFT ${tourId}] All tour lineups complete, ending draft.`);
     // Mark tour as draft complete and update in repository
@@ -252,8 +241,18 @@ export async function createTourNamespace(tourId: string): Promise<void> {
       `[DRAFT ${tourId}] Writing remaining picks to repository. ${leftOverPicks.length} picks remaining.`
     );
     tourNamespace.local.disconnectSockets();
-    console.info(`[DRAFT ${tourId}] Draft complete, destroying namespace.`);
-    io._nsps.delete(`/${tourId}`);
+    console.info(`[DRAFT ${tourId}] Draft complete.`);
     //* Program Complete
+  }
+
+  function resetNamespace() {
+    console.info(`[DRAFT ${tourId}] Deleting namespace and resetting draft variables`);
+    io._nsps.delete(`/${tourId}`);
+    draftStarted = false;
+    draftCountingDown = false;
+    playerList = [];
+    currentTurnIndex = 0;
+    roundNumber = 0;
+    existingNamespaces = existingNamespaces.filter((ns) => ns !== tourId);
   }
 }

@@ -73,7 +73,10 @@ export async function createTourNamespace(tourId: string): Promise<void> {
     socket.on(SocketEvents.CLIENT_START_DRAFT, startDraft);
     socket.on(SocketEvents.CLIENT_CANCEL_DRAFT_COUNTDOWN, cancelDraftCountdown);
     socket.on(SocketEvents.CLIENT_ENDS_TURN, turnOver);
-    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, lineupComplete);
+    socket.on(SocketEvents.CLIENT_LINEUP_COMPLETE, function (data: ClientIdentification) {
+      socket.emit(SocketEvents.SERVER_LINEUP_ACKNOWLEDGED);
+      lineupComplete(data);
+    });
     socket.on('disconnect', function () {
       console.info(
         `[DRAFT ${tourId}] Socket ${socket.id} disconnected. Updating player list`
